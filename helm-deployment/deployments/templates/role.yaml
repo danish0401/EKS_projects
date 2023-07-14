@@ -1,0 +1,41 @@
+{{ $APPLICATION:=index .Values.DEPLOYMENTS .Values.DEPLOY_APP }}
+{{- if $APPLICATION.SERVICE_ACCOUNT }}
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding # Doesn't support namespaces, so we need to have unique name
+metadata:
+  name: "{{ $APPLICATION.NAME }}-{{ default "default" .Values.NAMESPACE }}"
+subjects:
+- kind: ServiceAccount
+  name: {{ $APPLICATION.NAME }}
+  namespace: {{ default "default" .Values.NAMESPACE }}
+roleRef:
+  kind: ClusterRole
+  name: "{{ $APPLICATION.NAME }}-{{ default "default" .Values.NAMESPACE }}"
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole # Doesn't support namespaces, so we need to have unique name
+metadata:
+  name: "{{ $APPLICATION.NAME }}-{{ default "default" .Values.NAMESPACE }}"
+{{- if $APPLICATION.ROLE_RULES }}
+rules:
+{{ toYaml $APPLICATION.ROLE_RULES }}
+{{- else }}
+rules:
+- apiGroups: [""] # "" indicates the core API group
+  resources:
+  - namespaces
+  - pods
+  verbs:
+  - get
+  - watch
+  - list
+{{- end }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $APPLICATION.NAME }}
+  namespace: {{ default "default" .Values.NAMESPACE }}
+{{- end }}

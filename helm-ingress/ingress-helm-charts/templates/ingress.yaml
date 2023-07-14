@@ -1,0 +1,12 @@
+{{ $APPLICATION:=index .Values.INGRESS .Values.DEPLOY_APP }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $APPLICATION.NAME }}
+  namespace: {{ $APPLICATION.NAMESPACE }}
+  annotations:
+{{ tpl ( toYaml $APPLICATION.ANNOTATIONS | indent 4 ) . }}
+spec:
+  rules:
+{{ tpl ( toYaml $APPLICATION.RULES | indent 2 ) . }}

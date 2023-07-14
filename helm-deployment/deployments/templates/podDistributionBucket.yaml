@@ -1,0 +1,13 @@
+{{ $APPLICATION:=index .Values.DEPLOYMENTS .Values.DEPLOY_APP }}
+{{- if gt $APPLICATION.REPLICAS 1.0 }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ $APPLICATION.NAME }}
+spec:
+  minAvailable: {{ default 1 $APPLICATION.MIN_AVAILABLE_REPLICAS }}
+  selector:
+    matchLabels:
+      app: {{ $APPLICATION.NAME }}
+{{- end }}

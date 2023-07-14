@@ -1,0 +1,16 @@
+{{ $APPLICATION:=index .Values.DEPLOYMENTS .Values.DEPLOY_APP }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: {{ $APPLICATION.NAME }}
+    environment: {{ .Values.ENVIRONMENT }}
+  name: {{ $APPLICATION.NAME }}-env-config
+  namespace: {{ default "default" .Values.NAMESPACE | quote }}
+data:
+  ENVIRONMENT: "{{ .Values.ENVIRONMENT }}"
+  KUBE_NAMESPACE: {{ default "default" .Values.NAMESPACE | quote }}
+{{- range $key, $value := $APPLICATION.ENV }}
+  {{ $key }}: {{ tpl ( $value | quote ) $ }}
+{{- end }}

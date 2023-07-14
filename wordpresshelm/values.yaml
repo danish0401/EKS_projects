@@ -1,0 +1,11 @@
+# Applicatinon Configuration
+
+name: application
+
+application:
+  replicaCount: 2
+  imagename: wordpress:4.8-apache
+
+mysql:
+  replicaCount: 1
+  imagename: mysql:5.6

@@ -1,0 +1,119 @@
+{{ $APPLICATION:=index .Values.DEPLOYMENTS .Values.DEPLOY_APP }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: {{ $APPLICATION.NAME }}
+    environment: {{ .Values.ENVIRONMENT }}
+    jenkins_build_user: {{ replace  " " "" (default "unknown" .Values.jenkins_build_user ) }} # Variable from Jenkins deploy-pipeline
+#    jenkins_build_url: {{ replace  " " "_" (default "unknown" .Values.jenkins_build_url ) }}  # Variable from Jenkins deploy-pipeline
+  name: {{ $APPLICATION.NAME }}
+  namespace: {{ default "default" .Values.NAMESPACE | quote }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ $APPLICATION.NAME }}
+  replicas: {{ default 1 $APPLICATION.REPLICAS }}
+  template:
+    metadata:
+      labels:
+        app: {{ $APPLICATION.NAME }}
+        environment: {{ .Values.ENVIRONMENT }}
+        jenkins_build_user: {{ replace  " " "" (default "unknown" .Values.jenkins_build_user ) }} # Variable from Jenkins deploy-pipeline
+#        jenkins_build_url: {{ replace  " " "_" (default "unknown" .Values.jenkins_build_url ) }}  # Variable from Jenkins deploy-pipeline
+      annotations:
+        deployment_date: {{ now | quote }}
+    spec:
+    {{- if $APPLICATION.SERVICE_ACCOUNT }}
+      serviceAccountName: {{ $APPLICATION.NAME }}
+    {{- end }}
+      terminationGracePeriodSeconds: {{ default 30 $APPLICATION.TERMINATION_GRACE_PERIOD_SECONDS }}
+{{- if $APPLICATION.TOLERATIONS }}
+      tolerations:
+{{ toYaml $APPLICATION.TOLERATIONS | indent 6 }}
+{{- end }}
+      affinity:
+{{- if $APPLICATION.AFFINITY }}
+{{ toYaml $APPLICATION.AFFINITY | indent 6 }}
+{{- else }}
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values: [ "{{ $APPLICATION.NAME }}" ]
+              topologyKey: kubernetes.io/hostname
+{{- end }}
+      restartPolicy: {{ default "Always" .Values.RESTART_POLICY }}
+      dnsConfig:
+        options:
+        - name: ndots # https://habr.com/ru/company/nixys/blog/464371/
+          value: "2"
+      containers:
+      - name: {{ $APPLICATION.NAME }}
+        image: {{ default $APPLICATION.DOCKER_IMAGE .Values.DOCKER_IMAGE }}
+        imagePullPolicy: {{ default "Always" $APPLICATION.IMAGE_PULL_POLICY }}
+        securityContext:
+{{- if $APPLICATION.SECURITY_CONTEXT }}
+{{ toYaml $APPLICATION.SECURITY_CONTEXT | indent 8 }}
+{{- else }}
+### It will be cool to define default securityContext
+#          runAsUser: 1000
+#          runAsNonRoot: true
+#          readOnlyRootFilesystem: true
+{{- end }}
+{{- if $APPLICATION.START_COMMAND }}
+        command:
+{{ toYaml $APPLICATION.START_COMMAND | indent 8 }}
+{{- end }}
+{{- if $APPLICATION.ARGS }}
+        args:
+{{ toYaml $APPLICATION.ARGS | indent 8 }}
+{{- end }}
+        env:
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          - name: HOST_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.hostIP
+        envFrom:
+        - configMapRef:
+            name: {{ $APPLICATION.NAME }}-env-config
+        resources:
+{{- if $APPLICATION.RESOURCES }}
+{{ tpl ( toYaml $APPLICATION.RESOURCES | indent 10 ) . }}
+{{- else }}
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+{{- end }}
+{{- if $APPLICATION.PORTS }}
+        ports:
+{{ toYaml $APPLICATION.PORTS | indent 8 }}
+{{- end }}
+{{- if $APPLICATION.LIVENESS_PROBE }}
+        livenessProbe:
+{{ toYaml $APPLICATION.LIVENESS_PROBE | indent 10 }}
+{{- end }}
+{{- if $APPLICATION.READINESS_PROBE }}
+        readinessProbe:
+{{ toYaml $APPLICATION.READINESS_PROBE | indent 10 }}
+{{- end }}
+{{- if $APPLICATION.VOLUME_MOUNTS }}
+        volumeMounts:
+{{ tpl (toYaml $APPLICATION.VOLUME_MOUNTS | indent 8) . }}
+{{- end }}
+{{- if $APPLICATION.VOLUMES }}
+      volumes:
+{{ tpl (toYaml $APPLICATION.VOLUMES | indent 6) . }}
+{{- end }}

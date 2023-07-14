@@ -1,0 +1,32 @@
+{{ $APPLICATION:=index .Values.DEPLOYMENTS .Values.DEPLOY_APP }}
+{{- if .Values.MIGRATIONS }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Chart.Name }}-migration-job
+  labels:
+  namespace: {{ default "default" .Values.NAMESPACE | quote }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-1"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      name: {{ .Chart.Name }}-migration-job-pod
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: {{ .Chart.Name }}-db-migrations
+        image: {{ default $APPLICATION.DOCKER_IMAGE .Values.DOCKER_IMAGE }}
+        command: ["/bin/sh", "-c"]
+{{- if $APPLICATION.MIGRATIONS_ARGS }}
+        args:
+{{ toYaml $APPLICATION.MIGRATIONS_ARGS | indent 8 }}
+{{- end }}
+        envFrom:
+        - configMapRef:
+            name: {{ $APPLICATION.NAME }}-env-config
+{{- end }}

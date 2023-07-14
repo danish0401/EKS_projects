@@ -1,0 +1,4 @@
+apiVersion: v2
+description: Helm chart for deployments deployment
+name: deployments
+version: 1.0.7

@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql
+spec:
+  serviceName: mysql
+  replicas: {{ .Values.mysql.replicaCount }}  # Update to desired number of replicas
+  selector:
+    matchLabels:
+      {{ include "wordpress.mysqllabels" . | indent 6 }}
+  template:
+    metadata:
+      labels:
+        {{ include "wordpress.mysqllabels" . | indent 8 }}
+    spec:
+      containers:
+      - name: mysql
+        image: {{ .Values.mysql.imagename }} 
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-pwd
+              key: password
+        ports:
+        - name: mysql
+          containerPort: 3306
+        volumeMounts:
+        - name: mysql-data
+          mountPath: /var/lib/mysql
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi

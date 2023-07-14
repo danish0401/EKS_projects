@@ -1,0 +1,29 @@
+{{ $APPLICATION:=index .Values.DEPLOYMENTS .Values.DEPLOY_APP }}
+{{- if $APPLICATION.SERVICE_PORTS }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $APPLICATION.NAME }}
+  labels:
+    app: {{ $APPLICATION.NAME }}
+    environment: {{ .Values.ENVIRONMENT }}
+  namespace: {{ default "default" .Values.NAMESPACE | quote }}
+  annotations:
+{{- if $APPLICATION.READINESS_PROBE }}
+    alb.ingress.kubernetes.io/healthcheck-path: {{ (index $APPLICATION.READINESS_PROBE "httpGet").path | quote }}
+{{- else }}
+{{- if $APPLICATION.LIVENESS_PROBE }}
+    alb.ingress.kubernetes.io/healthcheck-path: {{ (index $APPLICATION.LIVENESS_PROBE "httpGet").path | quote }}
+{{- end }}
+{{- end }}
+{{ if $APPLICATION.SERVICE_ANNOTATIONS }}
+{{ toYaml $APPLICATION.SERVICE_ANNOTATIONS | indent 4 }}
+{{- end }}
+spec:
+  type: {{ ( default "NodePort" $APPLICATION.SERVICE_TYPE ) | quote }}
+  ports:
+{{ toYaml $APPLICATION.SERVICE_PORTS | indent 2 }}
+  selector:
+    app: {{ $APPLICATION.NAME }}
+{{- end }}

@@ -1,0 +1,14 @@
+{{ $APPLICATION:=index .Values.DEPLOYMENTS .Values.DEPLOY_APP }}
+{{ if $APPLICATION.CONFIG }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: {{ $APPLICATION.NAME }}
+    environment: {{ .Values.ENVIRONMENT }}
+  name: {{ $APPLICATION.CONFIG.NAME }}
+  namespace: {{ default "default" .Values.NAMESPACE | quote }}
+data:
+{{ tpl (toYaml $APPLICATION.CONFIG.CONTENT | indent 2 ) . }}
+{{- end }}

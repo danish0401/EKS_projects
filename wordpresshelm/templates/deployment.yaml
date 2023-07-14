@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    app: {{ .Values.name }}
+spec:
+  selector:
+    matchLabels:
+      {{ include "wordpress.applabels" . | indent 6 }}
+  replicas: {{ .Values.application.replicaCount }}
+  template:
+    metadata:
+      labels:
+        {{ include "wordpress.applabels" . | indent 8 }}
+    spec:
+      containers:
+      - image: {{ .Values.application.imagename }}
+        name: wordpress
+        env:
+        - name: WORDPRESS_DB_HOST
+          value: mysql.default.svc.cluster.local
+        - name: WORDPRESS_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-pwd
+              key: password
+        ports:
+        - containerPort: 80
